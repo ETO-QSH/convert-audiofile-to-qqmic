@@ -14,6 +14,37 @@
         MinHeight="750" MinWidth="500"
         MaxHeight="750" MaxWidth="500">
 
+    <Window.Resources>
+        <Style x:Key="WindowIconStyle" TargetType="ui:FontIcon">
+            <Style.Triggers>
+                <!-- 悬停样式 -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+                </Trigger>
+
+                <!-- 拖拽状态绑定 -->
+                <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                    <Setter Property="Foreground" Value="Blue"/>
+                    <Setter Property="Cursor" Value="SizeAll"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="Border" x:Key="DragContainerStyle">
+            <Style.Triggers>
+                <!-- 鼠标悬停效果 -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Cursor" Value="Hand"/>
+                </Trigger>
+                <!-- 拖拽时效果 -->
+                <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                    <Setter Property="Background" Value="#10000000"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="0,0,0,78">
         <Grid.RowDefinitions>
             <RowDefinition Height="150"/>
@@ -72,7 +103,8 @@
             <ikw:SimpleStackPanel Spacing="4" Height="360">
             
                 <!-- 音频文件选择 -->
-                <ui:SettingsCard Click="OnPickFile" Header="音频文件选择" Description="点击选择将要使用的音频文件" Margin="0,1,0,13" VerticalAlignment="Stretch" Height="108">
+                <ui:SettingsCard Click="OnPickFile" AllowDrop="True" DragOver="AudioSettingsCard_DragOver" Drop="AudioSettingsCard_Drop"
+                    Header="音频文件选择" Description="点击选择将要使用的音频文件" Margin="0,1,0,13" VerticalAlignment="Stretch" Height="108">
                     <ui:SettingsCard.HeaderIcon>
                         <ui:FontIcon Glyph="&#xE8D6;" />
                         <!-- 文件夹图标 -->
@@ -84,7 +116,7 @@
                                  Margin="12,0,0,0"
                                  FontFamily="Consolas"
                                  ui:ControlHelper.Header="音频路径"
-                                 ui:ControlHelper.PlaceholderText="{Binding SelectedFilePath}"
+                                 ui:ControlHelper.PlaceholderText="{Binding SelectedFilePath, Mode=OneWay}"
                                  AcceptsReturn="True"
                                  IsUndoEnabled="True"
                                  IsReadOnly="True"
@@ -106,8 +138,16 @@
                 <!-- QQ窗口选择 -->
                 <ui:SettingsCard Click="GetQQWindow" Header="程序窗口选择" Description="点击选择目标软件聊天窗口进行绑定" Margin="0,1,0,13" VerticalAlignment="Stretch" Height="108">
                     <ui:SettingsCard.HeaderIcon>
-                        <ui:FontIcon Glyph="&#xF7ED;"/>
-                        <!-- 应用窗口图标 -->
+                        <!-- 使用Border作为拖拽容器 -->
+                        <Border x:Name="dragContainer" 
+                                Background="Transparent"
+                                PreviewMouseLeftButtonDown="StartDrag" 
+                                PreviewMouseMove="DoDrag"
+                                AllowDrop="True">
+                            <ui:FontIcon x:Name="windowIcon" 
+                                        Glyph="&#xF7ED;" 
+                                        Cursor="Hand"/>
+                        </Border>
                     </ui:SettingsCard.HeaderIcon>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
@@ -116,7 +156,7 @@
                                  Margin="12,0,0,0"
                                  FontFamily="Consolas"
                                  ui:ControlHelper.Header="程序窗口"
-                                 ui:ControlHelper.PlaceholderText="{Binding ProgramName}"
+                                 ui:ControlHelper.PlaceholderText="{Binding ProgramName, Mode=OneWay}"
                                  AcceptsReturn="True"
                                  IsUndoEnabled="True"
                                  IsReadOnly="True"

@@ -65,6 +65,22 @@ namespace AudioToMicWPF
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+        
+        [DllImport("user32.dll")]
+        public static extern IntPtr WindowFromPoint(POINT point);
+        
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
     }
 
 
@@ -85,5 +101,3 @@ namespace AudioToMicWPF
         }
     }
 }
-
-

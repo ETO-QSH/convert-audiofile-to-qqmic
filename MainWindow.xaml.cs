@@ -1,8 +1,11 @@
-using AudioToMicWPF.Services;
+﻿using AudioToMicWPF.Services;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
+using static AudioToMicWPF.WindowInterop;
+using System.Windows.Input;
+using System.Diagnostics;
 
 
 namespace AudioToMicWPF
@@ -62,7 +65,7 @@ namespace AudioToMicWPF
         {
             FilePickerServices filePickerServices = new FilePickerServices();
             viewModel.SelectedFilePath = filePickerServices.OpenFilePicker();
-            hasChosenAudio = viewModel.SelectedFilePath != "未选择音频文件！" ? true : false;
+            hasChosenAudio = viewModel.SelectedFilePath != "未选择音频文件！（可以拖动至左边卡片上）" ? true : false;
         }
 
         private void devicesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -140,9 +143,125 @@ namespace AudioToMicWPF
             }
         }
 
-        private void slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void AudioSettingsCard_DragOver(object sender, DragEventArgs e)
         {
+            // 检查拖放内容是否包含文件
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length == 1 && IsAudioFile(files[0]))
+                {
+                    e.Effects = DragDropEffects.Copy;
+                    return;
+                }
+            }
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
 
+        private void AudioSettingsCard_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                if (files.Length == 1 && IsAudioFile(files[0]))
+                {
+                    // 正确更新 ViewModel
+                    viewModel.SelectedFilePath = files[0];
+                    hasChosenAudio = true;
+                }
+                else
+                {
+                    viewModel.SelectedFilePath = "无效的音频文件";
+                    hasChosenAudio = false;
+                }
+            }
+            e.Handled = true;
+        }
+
+        private bool IsAudioFile(string path)
+        {
+            var ext = System.IO.Path.GetExtension(path).ToLower();
+            return ext == ".aac" || ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".flac"; // 添加更多支持的格式
+        }
+
+        private System.Windows.Point _dragStartPoint;
+        private bool _isDragging;
+
+        private void StartDrag(object sender, MouseButtonEventArgs e)
+        {
+            // 记录拖拽起点
+            _dragStartPoint = e.GetPosition(null);
+            _isDragging = false;
+            ((Border)sender).CaptureMouse(); // 捕获鼠标确保后续事件
+        }
+
+        private void DoDrag(object sender, MouseEventArgs e)
+        {
+            if (!_isDragging && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPos = e.GetPosition(null);
+                var delta = currentPos - _dragStartPoint;
+
+                if (Math.Abs(delta.X) > 5 || Math.Abs(delta.Y) > 5)
+                {
+                    _isDragging = true;
+                    var border = (Border)sender;
+
+                    // 设置自定义数据格式
+                    var data = new DataObject("WindowDragOperation", true);
+
+                    // 开始拖拽操作（注意使用Move效果）
+                    DragDrop.DoDragDrop(border, data, DragDropEffects.Move);
+
+                    // 拖拽完成后获取窗口信息
+                    GetWindowUnderCursor();
+
+                    border.ReleaseMouseCapture();
+                    _isDragging = false;
+                }
+            }
+        }
+
+        private void OnGiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+            if (e.Effects == DragDropEffects.None)
+            {
+                GetWindowUnderCursor();
+                DragDrop.RemoveGiveFeedbackHandler(this, OnGiveFeedback);
+            }
+            e.Handled = true;
+        }
+
+        private void GetWindowUnderCursor()
+        {
+            try
+            {
+                // 获取释放时的鼠标位置
+                GetCursorPos(out POINT point);
+                
+                // 获取目标窗口句柄
+                IntPtr hWnd = WindowFromPoint(point);
+                if (hWnd == IntPtr.Zero) return;
+        
+                // 获取窗口信息
+                GetWindowThreadProcessId(hWnd, out uint processId);
+                using var process = Process.GetProcessById((int)processId);
+                
+                // 更新UI
+                Dispatcher.Invoke(() =>
+                {
+                    viewModel.ProgramName = !string.IsNullOrEmpty(process.MainWindowTitle) 
+                        ? process.MainWindowTitle 
+                        : $"[PID: {process.Id}]";
+                    ListAllWindows.chatProcess = process;
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => 
+                    MessageBox.Show($"获取窗口失败: {ex.Message}"));
+            }
         }
     }
 }

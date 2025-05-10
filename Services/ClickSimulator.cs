@@ -2,9 +2,6 @@
 
 namespace AudioToMicWPF.Services
 {
-
-
-
     public class ClickSimulator
     {
         [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]

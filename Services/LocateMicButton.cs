@@ -70,4 +70,3 @@ namespace AudioToMicWPF.Services
         }
     }
 }
-
